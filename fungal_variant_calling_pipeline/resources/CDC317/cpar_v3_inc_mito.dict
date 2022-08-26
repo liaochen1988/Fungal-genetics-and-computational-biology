@@ -1,0 +1,10 @@
+@HD	VN:1.6
+@SQ	SN:cpar_Chr_6	LN:898305	M5:e984704923a1a20d09ff8f42fc5d4404	UR:file:/Users/liaoc/Documents/SHADOW/fungal_variant_calling_pipeline/resources/CDC317/cpar_v3_inc_mito.fasta
+@SQ	SN:cpar_Chr_1	LN:2235583	M5:3713981a27c751d5732ee6cb5023020c	UR:file:/Users/liaoc/Documents/SHADOW/fungal_variant_calling_pipeline/resources/CDC317/cpar_v3_inc_mito.fasta
+@SQ	SN:cpar_Chr_4	LN:1347506	M5:435deb92af48924182949ced0d9fc1b3	UR:file:/Users/liaoc/Documents/SHADOW/fungal_variant_calling_pipeline/resources/CDC317/cpar_v3_inc_mito.fasta
+@SQ	SN:cpar_Chr_8	LN:2091827	M5:295d25f8a80f85bd98d8379ff1d2c4dc	UR:file:/Users/liaoc/Documents/SHADOW/fungal_variant_calling_pipeline/resources/CDC317/cpar_v3_inc_mito.fasta
+@SQ	SN:cpar_Chr_2	LN:3023470	M5:671f162f0793223cb1a51815caa73b21	UR:file:/Users/liaoc/Documents/SHADOW/fungal_variant_calling_pipeline/resources/CDC317/cpar_v3_inc_mito.fasta
+@SQ	SN:cpar_Chr_7	LN:957321	M5:13dcfd81290ee2d847806309da48b8ba	UR:file:/Users/liaoc/Documents/SHADOW/fungal_variant_calling_pipeline/resources/CDC317/cpar_v3_inc_mito.fasta
+@SQ	SN:cpar_Chr_3	LN:1481940	M5:7ec99094ce0d778fb84d05d7e6a7f8dc	UR:file:/Users/liaoc/Documents/SHADOW/fungal_variant_calling_pipeline/resources/CDC317/cpar_v3_inc_mito.fasta
+@SQ	SN:cpar_Chr_5	LN:962441	M5:c910cb795c43045cc635da07d2991472	UR:file:/Users/liaoc/Documents/SHADOW/fungal_variant_calling_pipeline/resources/CDC317/cpar_v3_inc_mito.fasta
+@SQ	SN:cpar_mito	LN:32745	M5:d0fcbe3c183c413540f07351dedaf4ef	UR:file:/Users/liaoc/Documents/SHADOW/fungal_variant_calling_pipeline/resources/CDC317/cpar_v3_inc_mito.fasta
