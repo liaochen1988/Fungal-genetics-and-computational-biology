@@ -24,7 +24,7 @@ for path in $curr_folder/$1/*; do  # note that path is the absolute directory
 done
 
 command="$command -O $curr_folder/$2/cohort.unfiltered.vcf.gz"
-echo $command
+#echo $command
 eval $command
 
 $curr_folder/../resources/GATK/gatk-4.1.9.0/gatk --java-options "-Xms4g -Xmx196g" GenotypeGVCFs \

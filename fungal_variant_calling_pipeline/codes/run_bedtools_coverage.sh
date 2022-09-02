@@ -1,5 +1,6 @@
 # iterate all files in the folder specified by the first argument ($1)
 curr_folder=$PWD
+command="wait"
 for path in $curr_folder/$1/*; do  # note that path is the absolute directory
     # if not a directory, skip
     [ -d "${path}" ] || continue
@@ -26,9 +27,19 @@ for path in $curr_folder/$1/*; do  # note that path is the absolute directory
         continue
     fi
 
-    bedtools coverage -a $curr_folder/../resources/CDC317/coverage_ORFs_v3.txt -b $bamfile > $curr_folder/$2/$base_folder/$base_fastq.read_density.txt &
+    # .read_density.hist.txt and .genome_coverage.txt are needed for computing copy numbers
+    # coverage analysis per gene (gene positions are listed in coverage_ORFs_v3.txt)
     bedtools coverage -a $curr_folder/../resources/CDC317/coverage_ORFs_v3.txt -b $bamfile -hist > $curr_folder/$2/$base_folder/$base_fastq.read_density.hist.txt &
+    # coverage at the chromosome level
     bedtools genomecov -ibam $bamfile > $curr_folder/$2/$base_folder/$base_fastq.genome_coverage.txt &
+    command="$command $!"
+
+    # .genome_coverage.per_base.txt can be used to plot genome copy number at nucleotide level
+    # coverage at the per-site level
     bedtools genomecov -ibam $bamfile -d > $curr_folder/$2/$base_folder/$base_fastq.genome_coverage.per_base.txt &
+    command="$command $!"
 
 done
+
+echo $command
+eval $command

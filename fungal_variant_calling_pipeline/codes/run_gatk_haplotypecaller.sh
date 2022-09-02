@@ -1,5 +1,6 @@
 # iterate all files in the folder specified by the first argument ($1)
 curr_folder=$PWD
+command="wait"
 for path in $curr_folder/$1/*; do  # note that path is the absolute directory
     # if not a directory, skip
     [ -d "${path}" ] || continue
@@ -35,4 +36,9 @@ for path in $curr_folder/$1/*; do  # note that path is the absolute directory
       -I $bamfile \
       -O $curr_folder/$2/$base_folder/$base_fastq.unfiltered.vcf.gz \
       -ERC GVCF &
+
+    command="$command $!"
 done
+
+echo $command
+eval $command
