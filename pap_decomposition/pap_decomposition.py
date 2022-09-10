@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from numpy.random import lognormal, exponential, uniform
-import random
 from scipy.optimize import curve_fit
 import warnings
 warnings.filterwarnings('ignore')
@@ -106,12 +105,11 @@ else:
 ####################
 
 results = []
+np.random.seed(42)
 for strain in df_pap.columns:
     print("-----------------")
     print("-----------------")
     print("strain:", strain)
-
-    random.seed(42)
 
     #--------------------
     # remove missing data
@@ -133,7 +131,7 @@ for strain in df_pap.columns:
     hillc = uniform(1, 4, size=mc_runs)
     K50 = exponential(10, size=mc_runs)
     lb = [0.0, 1.0, 0.0]
-    ub = [np.inf, np.inf, np.inf]
+    ub = [10.0, np.inf, np.inf]
     mse = []
     popt_list = []
     _iter = 1
@@ -187,7 +185,7 @@ for strain in df_pap.columns:
     K50_s = exponential(10, size=mc_runs)
     K50_r = exponential(10, size=mc_runs)
     lb = [0.0,  0.0,  0.0,  1.0,  0.0,  0.0]
-    ub = [1.0,  np.inf, np.inf, np.inf, np.inf, np.inf]
+    ub = [1.0,  10.0, 10.0, np.inf, np.inf, np.inf]
     mse = []
     popt_list = []
     _iter=1
@@ -241,16 +239,14 @@ for strain in df_pap.columns:
     # compare one and two population model
     #-------------------------------------
     final_num_populations = 0
-    if mse_one < mse_two + 0.001:
+    if mse_one < mse_two + 0.01:
         # one population model
-        results.append([strain, 'one', mse_one, 1.0, popt_one[0], np.NaN, popt_one[1], popt_one[2], np.NaN])
         use_one_population_model=True
         ypred = pap_simulation(xdata, *popt_one)
         final_mse = mse_one
         final_num_populations = 1
     else:
         # two population model
-        results.append([strain, 'two', mse_two] + list(popt_two))
         use_two_population_model=True
         ypred = pap_simulation(xdata, *popt_two)
         final_mse = mse_two
@@ -277,7 +273,8 @@ for strain in df_pap.columns:
             use_one_population_model=False
         ypred= pap_simulation(xdata, *popt2)
         curr_mse = np.sqrt(np.sum([(y-yhat)**2 for y,yhat in zip(ydata, ypred)])/len(xdata))
-        if curr_mse > final_mse + 0.001:
+        # print(new_deltag_s, curr_mse, final_mse)
+        if curr_mse > final_mse + 0.01:
             final_mse = curr_mse
             break
         else:
@@ -285,6 +282,14 @@ for strain in df_pap.columns:
                 popt_one = popt2
             else:
                 popt_two = popt2
+
+    #----------------
+    # Save to results
+    #----------------
+    if final_num_populations==1:
+        results.append([strain, 'one', final_mse, 1.0, popt_one[0], np.NaN, popt_one[1], popt_one[2], np.NaN])
+    else:
+        results.append([strain, 'two', final_mse] + list(popt_two))
 
     #-----
     # plot
@@ -294,7 +299,7 @@ for strain in df_pap.columns:
     # left panel:
     _ = ax[0].plot(xdata, ydata, 'o-', color='gray', markerfacecolor="none", markeredgecolor='gray', label='data')
     if final_num_populations == 1:
-        _ = ax[0].plot(xdata, ypred, 'bx', label='fit', markersize=6)
+        _ = ax[0].plot(xdata, ypred, 'bx', label='fit (mse=%2.2f)'%final_mse, markersize=6)
     else:
         _ = ax[0].plot(xdata, ypred, 'bx', label='fit (freq R=%2.6f, mse=%2.2f)'%(1-popt_two[0], final_mse))
     _ = ax[0].set_xlabel('Drug concentration')
@@ -330,7 +335,7 @@ for strain in df_pap.columns:
         net_growth_lb = maxg_min-popt_one[0]*(drug_concs_dense**popt_one[1]/(popt_one[2]**popt_one[1] + drug_concs_dense**popt_one[1]))
         net_growth_ub = maxg_max-popt_one[0]*(drug_concs_dense**popt_one[1]/(popt_one[2]**popt_one[1] + drug_concs_dense**popt_one[1]))
         net_growth_mean = (maxg_max+maxg_min)/2-popt_one[0]*(drug_concs_dense**popt_one[1]/(popt_one[2]**popt_one[1] + drug_concs_dense**popt_one[1]))
-        _ = ax[1].fill_between(drug_concs_dense, y1=net_growth_lb, y2=net_growth_ub, interpolate=True, color='skyblue', alpha=0.5)
+        _ = ax[1].fill_between(drug_concs_dense, y1=net_growth_lb, y2=net_growth_ub, interpolate=True, color='skyblue', alpha=0.5, label='S')
         _ = ax[1].plot(drug_concs_dense, net_growth_mean, '-', color='skyblue')
     else:
         net_growth_s_lb = maxg_min-popt_two[1]*(drug_concs_dense**popt_two[3]/(popt_two[4]**popt_two[3]+drug_concs_dense**popt_two[3]))
