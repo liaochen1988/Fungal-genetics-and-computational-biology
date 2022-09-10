@@ -1,11 +1,13 @@
 import pandas as pd
 import math
+from copy import deepcopy
 import os
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from numpy.random import lognormal, exponential, uniform
+import random
 from scipy.optimize import curve_fit
 import warnings
 warnings.filterwarnings('ignore')
@@ -72,22 +74,30 @@ if os.path.exists("config.csv"):
     else:
         raise RuntimeError ("mc_runs (number of random sampling of initial conditions) not provided.")
 
-    if 'mic_to_plot' in list(df_config.index):
-        mic_to_plot = [float(x) for x in list(df_config.loc['mic_to_plot'])[0].split(';')]
-        if len(mic_to_plot) >20:
-            raise RuntimeError ("too many mic (only 20 allowed).")
+    if 'mic_lb' in list(df_config.index):
+        mic_lb = float(list(df_config.loc['mic_lb'])[0])
     else:
-        raise RuntimeError ("mic_to_plot (potential MIC values of susceptible population) not provided.")
+        raise RuntimeError ("mic_lb (minimum MIC of susceptible population) not provided.")
 
-    # optional
-    if 'to_include' in list(df_config.index):
-        strains_to_include = list(df_config.loc['to_include'])[0].split(';')
-        df_pap = df_pap[[col for col in df_pap.columns if col in strains_to_include]]
+    if 'mic_ub' in list(df_config.index):
+        mic_ub = float(list(df_config.loc['mic_ub'])[0])
+    else:
+        raise RuntimeError ("mic_ub (maximum MIC of susceptible population) not provided.")
+
+    # optimal parameters
+    if 'maxg_lb' in list(df_config.index):
+        maxg_lb = float(list(df_config.loc['maxg_lb'])[0])
+    else:
+        maxg_lb = 0.0
 
     if 'maxg_ub' in list(df_config.index):
         maxg_ub = float(list(df_config.loc['maxg_ub'])[0])
     else:
-        maxg_ub = np.infty
+        maxg_ub = 2.08 # 20min per generation
+
+    if 'to_include' in list(df_config.index):
+        strains_to_include = list(df_config.loc['to_include'])[0].split(';')
+        df_pap = df_pap[[col for col in df_pap.columns if col in strains_to_include]]
 else:
     raise RuntimeError ("config.csv not found.")
 
@@ -100,6 +110,8 @@ for strain in df_pap.columns:
     print("-----------------")
     print("-----------------")
     print("strain:", strain)
+
+    random.seed(42)
 
     #--------------------
     # remove missing data
@@ -143,12 +155,16 @@ for strain in df_pap.columns:
             continue
 
         if ier in [1,2,3,4]:
-            # a solution is found
-            ypred= pap_simulation(xdata, *popt)
-            curr_mse = np.sqrt(np.sum([(y-yhat)**2 for y,yhat in zip(ydata, ypred)])/len(xdata))
-            mse.append(curr_mse)
-            popt_list.append(popt)
-            print("mc =", _iter, ": mse =", curr_mse)
+            maxg1 = popt[0]*(mic_lb**popt[1]/(mic_lb**popt[1] + popt[2]**popt[1]))
+            maxg2 = popt[0]*(mic_ub**popt[1]/(mic_ub**popt[1] + popt[2]**popt[1]))
+            if maxg1 > maxg_ub or maxg2 < maxg_lb:
+                print("mc =", _iter, ": max growth rate falls out of allowable range")
+            else:
+                ypred= pap_simulation(xdata, *popt)
+                curr_mse = np.sqrt(np.sum([(y-yhat)**2 for y,yhat in zip(ydata, ypred)])/len(xdata))
+                mse.append(curr_mse)
+                popt_list.append(popt)
+                print("mc =", _iter, ": mse =", curr_mse)
         else:
             print("mc =", _iter, ": solution not found")
         _iter += 1
@@ -201,11 +217,16 @@ for strain in df_pap.columns:
                 tmp = popt[4]
                 popt[4] = popt[5]
                 popt[5] = tmp
-            ypred= pap_simulation(xdata, *popt)
-            curr_mse = np.sqrt(np.sum([(y-yhat)**2 for y,yhat in zip(ydata, ypred)])/len(xdata))
-            mse.append(curr_mse)
-            popt_list.append(popt)
-            print("mc =", _iter, ": mse =", curr_mse)
+            maxg1 = popt[1]*(mic_lb**popt[3]/(mic_lb**popt[3] + popt[4]**popt[3]))
+            maxg2 = popt[1]*(mic_ub**popt[3]/(mic_ub**popt[3] + popt[4]**popt[3]))
+            if maxg1 > maxg_ub or maxg2 < maxg_lb:
+                print("mc =", _iter, ": max growth rate falls out of allowable range")
+            else:
+                ypred= pap_simulation(xdata, *popt)
+                curr_mse = np.sqrt(np.sum([(y-yhat)**2 for y,yhat in zip(ydata, ypred)])/len(xdata))
+                mse.append(curr_mse)
+                popt_list.append(popt)
+                print("mc =", _iter, ": mse =", curr_mse)
         else:
             print("mc =", _iter, ": solution not found")
         _iter += 1
@@ -225,15 +246,45 @@ for strain in df_pap.columns:
         results.append([strain, 'one', mse_one, 1.0, popt_one[0], np.NaN, popt_one[1], popt_one[2], np.NaN])
         use_one_population_model=True
         ypred = pap_simulation(xdata, *popt_one)
+        final_mse = mse_one
         final_num_populations = 1
     else:
         # two population model
         results.append([strain, 'two', mse_two] + list(popt_two))
         use_two_population_model=True
         ypred = pap_simulation(xdata, *popt_two)
+        final_mse = mse_two
         final_num_populations = 2
     assert final_num_populations in [1,2]
-    print("\nmin mse_one =", mse_one, ", mser_two =", mse_two, ", %d population model is selected."%(final_num_populations))
+    print("\nmin mse_one =", mse_one, ", mse_two =", mse_two, ", %d population model is selected."%(final_num_populations))
+
+    #----------------
+    # Reduce deltag_s
+    #----------------
+    new_mse = []
+    if final_num_populations == 1:
+        deltag_s_max = popt_one[0]
+    else:
+        deltag_s_max = popt_two[1]
+    for new_deltag_s in np.linspace(deltag_s_max, 0, 1000):
+        if final_num_populations==1:
+            popt2 = deepcopy(popt_one)
+            popt2[0] = new_deltag_s
+            use_one_population_model=True
+        else:
+            popt2 = deepcopy(popt_two)
+            popt2[1] = new_deltag_s
+            use_one_population_model=False
+        ypred= pap_simulation(xdata, *popt2)
+        curr_mse = np.sqrt(np.sum([(y-yhat)**2 for y,yhat in zip(ydata, ypred)])/len(xdata))
+        if curr_mse > final_mse + 0.001:
+            final_mse = curr_mse
+            break
+        else:
+            if final_num_populations==1:
+                popt_one = popt2
+            else:
+                popt_two = popt2
 
     #-----
     # plot
@@ -245,37 +296,55 @@ for strain in df_pap.columns:
     if final_num_populations == 1:
         _ = ax[0].plot(xdata, ypred, 'bx', label='fit', markersize=6)
     else:
-        _ = ax[0].plot(xdata, ypred, 'bx', label='fit (freq R=%2.6f)'%(1-popt_two[0]))
+        _ = ax[0].plot(xdata, ypred, 'bx', label='fit (freq R=%2.6f, mse=%2.2f)'%(1-popt_two[0], final_mse))
     _ = ax[0].set_xlabel('Drug concentration')
     _ = ax[0].set_ylabel('log10(Survival)')
     _ = ax[0].legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=5)
-    _ = ax[0].set_ylim([np.log10(detection_limit)-0.5,0.5])
+    _ = ax[0].set_ylim([np.floor(np.min(ydata))-0.5,0.5])
 
     # right panel:
-    if len(mic_to_plot) <=10:
-        my_colors = sns.color_palette("tab10")
-    elif len(mic_to_plot) <=20:
-        my_colors = sns.color_palette("tab20")
+    drug_concs_dense = np.linspace(0.0, xdata[-1], 100)
+    mic_to_plot = np.linspace(mic_lb, mic_ub, 100)
 
-    drug_concs_dense = np.linspace(0,np.max(drug_concs), 100)
+    # find minimum maxg and maximum maxg
+    maxg_min = 1e10
+    maxg_max = -1e10
     for k,mic in enumerate(mic_to_plot):
         if final_num_populations==1:
             maxg = popt_one[0]*(mic**popt_one[1]/(mic**popt_one[1] + popt_one[2]**popt_one[1]))
-            if maxg <= maxg_ub:
-                net_growth = maxg-popt_one[0]*(drug_concs_dense**popt_one[1]/(popt_one[2]**popt_one[1] + drug_concs_dense**popt_one[1]))
-                _ = ax[1].plot(drug_concs_dense, net_growth, '-', color=my_colors[k], label="MIC=%2.2f"%mic)
+            if maxg >= maxg_lb and maxg <= maxg_ub:
+                if maxg < maxg_min:
+                    maxg_min = maxg
+                if maxg > maxg_max:
+                    maxg_max = maxg
         else:
             maxg = popt_two[1]*(mic**popt_two[3]/(mic**popt_two[3] + popt_two[4]**popt_two[3]))
-            if maxg <= maxg_ub:
-                net_growth_s = maxg-popt_two[1]*(drug_concs_dense**popt_two[3]/(popt_two[4]**popt_two[3]+drug_concs_dense**popt_two[3]))
-                net_growth_r = maxg-popt_two[2]*(drug_concs_dense**popt_two[3]/(popt_two[5]**popt_two[3]+drug_concs_dense**popt_two[3]))
-                if np.min(net_growth_r) > 0:
-                    mic_r = np.inf # no MIC
-                else:
-                    mic_r = drug_concs_dense[np.argmin(np.abs(net_growth_r))],
-                _ = ax[1].plot(drug_concs_dense, net_growth_s, '-', color=my_colors[k], label="MIC_s=%2.2f"%mic)
-                _ = ax[1].plot(drug_concs_dense, net_growth_r, '--', color=my_colors[k], label="MIC_r=%2.2f"%mic_r)
+            if maxg >= maxg_lb and maxg <= maxg_ub:
+                if maxg < maxg_min:
+                    maxg_min = maxg
+                if maxg > maxg_max:
+                    maxg_max = maxg
+
+    # fill area between curves of maxg_min and maxg_max
+    if final_num_populations==1:
+        net_growth_lb = maxg_min-popt_one[0]*(drug_concs_dense**popt_one[1]/(popt_one[2]**popt_one[1] + drug_concs_dense**popt_one[1]))
+        net_growth_ub = maxg_max-popt_one[0]*(drug_concs_dense**popt_one[1]/(popt_one[2]**popt_one[1] + drug_concs_dense**popt_one[1]))
+        net_growth_mean = (maxg_max+maxg_min)/2-popt_one[0]*(drug_concs_dense**popt_one[1]/(popt_one[2]**popt_one[1] + drug_concs_dense**popt_one[1]))
+        _ = ax[1].fill_between(drug_concs_dense, y1=net_growth_lb, y2=net_growth_ub, interpolate=True, color='skyblue', alpha=0.5)
+        _ = ax[1].plot(drug_concs_dense, net_growth_mean, '-', color='skyblue')
+    else:
+        net_growth_s_lb = maxg_min-popt_two[1]*(drug_concs_dense**popt_two[3]/(popt_two[4]**popt_two[3]+drug_concs_dense**popt_two[3]))
+        net_growth_s_ub = maxg_max-popt_two[1]*(drug_concs_dense**popt_two[3]/(popt_two[4]**popt_two[3]+drug_concs_dense**popt_two[3]))
+        net_growth_s_mean = (maxg_max+maxg_min)/2-popt_two[1]*(drug_concs_dense**popt_two[3]/(popt_two[4]**popt_two[3]+drug_concs_dense**popt_two[3]))
+        net_growth_r_lb = maxg_min-popt_two[2]*(drug_concs_dense**popt_two[3]/(popt_two[5]**popt_two[3]+drug_concs_dense**popt_two[3]))
+        net_growth_r_ub = maxg_max-popt_two[2]*(drug_concs_dense**popt_two[3]/(popt_two[5]**popt_two[3]+drug_concs_dense**popt_two[3]))
+        net_growth_r_mean = (maxg_max+maxg_min)/2-popt_two[2]*(drug_concs_dense**popt_two[3]/(popt_two[5]**popt_two[3]+drug_concs_dense**popt_two[3]))
+        _ = ax[1].fill_between(drug_concs_dense, y1=net_growth_s_lb, y2=net_growth_s_ub, interpolate=True, color='skyblue', alpha=0.5, label='S')
+        _ = ax[1].fill_between(drug_concs_dense, y1=net_growth_r_lb, y2=net_growth_r_ub, interpolate=True, color='lightcoral', alpha=0.5, label='R')
+        _ = ax[1].plot(drug_concs_dense, net_growth_s_mean, '-', color='blue')
+        _ = ax[1].plot(drug_concs_dense, net_growth_r_mean, '-', color='red')
     _ = ax[1].plot([0,np.max(drug_concs_dense)], [0,0], 'k--')
+    _ = ax[1].set_xticks(drug_concs)
     _ = ax[1].set_ylabel('Net growth rate (1/hour)')
     _ = ax[1].set_xlabel('Drug concentration')
     _ = ax[1].legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=3)
