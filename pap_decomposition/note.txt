@@ -1,0 +1,4 @@
+In the nature micorbiology paper led by Marina Pekmezocvic, the generation time of the five replicates of C. para is
+0.93, 0.88, 0.56, 0.64, 0.63
+Mean generation time is 0.73hr
+Mean specific growth rate is 0.95/hr

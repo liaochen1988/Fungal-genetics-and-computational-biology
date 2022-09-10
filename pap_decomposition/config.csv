@@ -1,0 +1,7 @@
+pap_file,micafungin_PAPdata_final.csv
+detection_limit,1e-6
+time_length,48
+mc_runs,10
+mic_to_plot,0.125;0.25;0.5;1;1.5;2
+maxg_ub,1.0
+to_include,489
