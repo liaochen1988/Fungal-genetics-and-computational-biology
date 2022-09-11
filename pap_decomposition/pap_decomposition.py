@@ -127,15 +127,17 @@ for strain in df_pap.columns:
     #----------------------------
     print("\nrunning one population model...")
     use_one_population_model=True
-    deltag = lognormal(0, 1, size=mc_runs)
-    hillc = uniform(1, 4, size=mc_runs)
-    K50 = exponential(10, size=mc_runs)
+    deltag = lognormal(0, 1, size=10*mc_runs)
+    hillc = uniform(1, 4, size=10*mc_runs)
+    K50 = exponential(10, size=10*mc_runs)
     lb = [0.0, 1.0, 0.0]
     ub = [10.0, np.inf, np.inf]
     mse = []
     popt_list = []
     _iter = 1
     for p1, p2, p3 in zip(deltag, hillc, K50):
+        if _iter > mc_runs:
+            break
         curr_params = [p1, p2, p3]
         try:
             popt, pcov, infodict, mesg, ier = curve_fit(
@@ -149,7 +151,7 @@ for strain in df_pap.columns:
                 full_output=True
             )
         except:
-            print("mc =", _iter, ": failed")
+            print("mc =", _iter, ": curve_fit failed")
             continue
 
         if ier in [1,2,3,4]:
@@ -163,9 +165,9 @@ for strain in df_pap.columns:
                 mse.append(curr_mse)
                 popt_list.append(popt)
                 print("mc =", _iter, ": mse =", curr_mse)
+                _iter += 1
         else:
             print("mc =", _iter, ": solution not found")
-        _iter += 1
 
     if len(mse) == 0:
         raise RuntimeError("decomposition using one population model fails. check data.")
@@ -178,18 +180,20 @@ for strain in df_pap.columns:
     #----------------------------
     print("\nrunning two population model...")
     use_one_population_model=False
-    freq_s = 10**(uniform(np.log10(detection_limit), 0, size=mc_runs))
-    deltag_s = lognormal(0, 1, size=mc_runs)
-    deltag_r = lognormal(0, 1, size=mc_runs)
-    hillc = uniform(1, 4, size=mc_runs)
-    K50_s = exponential(10, size=mc_runs)
-    K50_r = exponential(10, size=mc_runs)
+    freq_s = 10**(uniform(np.log10(detection_limit), 0, size=10*mc_runs))
+    deltag_s = lognormal(0, 1, size=10*mc_runs)
+    deltag_r = lognormal(0, 1, size=10*mc_runs)
+    hillc = uniform(1, 4, size=10*mc_runs)
+    K50_s = exponential(10, size=10*mc_runs)
+    K50_r = exponential(10, size=10*mc_runs)
     lb = [0.0,  0.0,  0.0,  1.0,  0.0,  0.0]
     ub = [1.0,  10.0, 10.0, np.inf, np.inf, np.inf]
     mse = []
     popt_list = []
     _iter=1
     for p1, p2, p3, p4, p5, p6 in zip(freq_s, deltag_s, deltag_r, hillc, K50_s, K50_r):
+        if _iter > mc_runs:
+            break
         curr_params = [p1, p2, p3, p4, p5, p6]
         try:
             popt, pcov, infodict, mesg, ier = curve_fit(
@@ -203,7 +207,7 @@ for strain in df_pap.columns:
                 full_output=True
             )
         except:
-            print("mc =", _iter, ": failed")
+            print("mc =", _iter, ": curve_fit failed")
             continue
         if ier in [1,2,3,4]:
             # a solution is found
@@ -225,9 +229,9 @@ for strain in df_pap.columns:
                 mse.append(curr_mse)
                 popt_list.append(popt)
                 print("mc =", _iter, ": mse =", curr_mse)
+                _iter += 1
         else:
             print("mc =", _iter, ": solution not found")
-        _iter += 1
 
     if len(mse) == 0:
         raise RuntimeError("decomposition using two population model fails. check data.")
@@ -257,31 +261,48 @@ for strain in df_pap.columns:
     #----------------
     # Reduce deltag_s
     #----------------
-    new_mse = []
     if final_num_populations == 1:
         deltag_s_max = popt_one[0]
     else:
         deltag_s_max = popt_two[1]
+    final_mse2 = final_mse
     for new_deltag_s in np.linspace(deltag_s_max, 0, 1000):
         if final_num_populations==1:
             popt2 = deepcopy(popt_one)
             popt2[0] = new_deltag_s
             use_one_population_model=True
+
+            # make sure that maxg falls between maxg_lb and maxg_ub
+            maxg1 = popt2[0]*(mic_lb**popt2[1]/(mic_lb**popt2[1] + popt2[2]**popt2[1]))
+            maxg2 = popt2[0]*(mic_ub**popt2[1]/(mic_ub**popt2[1] + popt2[2]**popt2[1]))
+            if maxg1 > maxg_ub or maxg2 < maxg_lb:
+                continue
         else:
             popt2 = deepcopy(popt_two)
             popt2[1] = new_deltag_s
             use_one_population_model=False
+
+            # make sure that deltag_s>=deltag_r
+            if popt2[1]<popt2[2]:
+                continue
+
+            # make sure that maxg falls between maxg_lb and maxg_ub
+            maxg1 = popt2[1]*(mic_lb**popt2[3]/(mic_lb**popt2[3] + popt2[4]**popt2[3]))
+            maxg2 = popt2[1]*(mic_ub**popt2[3]/(mic_ub**popt2[3] + popt2[4]**popt2[3]))
+            if maxg1 > maxg_ub or maxg2 < maxg_lb:
+                continue
         ypred= pap_simulation(xdata, *popt2)
         curr_mse = np.sqrt(np.sum([(y-yhat)**2 for y,yhat in zip(ydata, ypred)])/len(xdata))
         # print(new_deltag_s, curr_mse, final_mse)
         if curr_mse > final_mse + 0.01:
-            final_mse = curr_mse
+            final_mse = final_mse2
             break
         else:
             if final_num_populations==1:
                 popt_one = popt2
             else:
                 popt_two = popt2
+            final_mse2 = curr_mse
 
     #----------------
     # Save to results
@@ -299,9 +320,9 @@ for strain in df_pap.columns:
     # left panel:
     _ = ax[0].plot(xdata, ydata, 'o-', color='gray', markerfacecolor="none", markeredgecolor='gray', label='data')
     if final_num_populations == 1:
-        _ = ax[0].plot(xdata, ypred, 'bx', label='fit (mse=%2.2f)'%final_mse, markersize=6)
+        _ = ax[0].plot(xdata, ypred, 'bx', label='fit (mse=%2.4f)'%final_mse, markersize=6)
     else:
-        _ = ax[0].plot(xdata, ypred, 'bx', label='fit (freq R=%2.6f, mse=%2.2f)'%(1-popt_two[0], final_mse))
+        _ = ax[0].plot(xdata, ypred, 'bx', label='fit (freq R=%2.6f, mse=%2.4f)'%(1-popt_two[0], final_mse))
     _ = ax[0].set_xlabel('Drug concentration')
     _ = ax[0].set_ylabel('log10(Survival)')
     _ = ax[0].legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=5)
