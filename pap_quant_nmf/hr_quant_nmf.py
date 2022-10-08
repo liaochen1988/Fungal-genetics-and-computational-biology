@@ -42,27 +42,27 @@ parser.add_argument('-m', '--pretrained_nmf_model',
 parser.add_argument('-mina', '--min_alpha',
                     action='store',
                     dest='min_alpha',
-                    default=1e-10,
+                    default=1e-4,
                     type=float,
                     help="minium value that multiplies the regularization terms")
 parser.add_argument('-maxa', '--max_alpha',
                     action='store',
                     dest='max_alpha',
-                    default=1e-1,
+                    default=1e0,
                     type=float,
                     help="maximum value that multiplies the regularization terms")
 parser.add_argument('-na', '--n_alphas',
                     action='store',
                     dest='n_alphas',
-                    default=10,
+                    default=25,
                     type=int,
                     help="number of multipliers between min_alpha and max_alpha")
-parser.add_argument('-tolp2i', '--peak_to_initial_basis_tolerance',
+parser.add_argument('-tol', '--tolerance_deviate_from_optimum',
                     action='store',
-                    dest='tol_P2I',
-                    default=1.2,
+                    dest='tol',
+                    default=0.05,
                     type=float,
-                    help="maximum value of peak-to-initial value of basis (W matrix)")
+                    help="percent tolerance when alpha increases the reconstruction error)")
 parser.add_argument('-o', '--output_directory',
                     action='store',
                     dest='out_dir',
@@ -92,7 +92,8 @@ df_pap = df_pap.reset_index().sort_values('drug_conc', ascending=True).set_index
 
 # load pretrained nmf model
 if args.pretrained_nmf_model is not None:
-    model = pickle.load(args.pretrained_nmf_model)
+    with open(args.pretrained_nmf_model, 'rb') as pickle_file:
+        model = pickle.load(pickle_file)
 
 # check min alpha
 min_alpha = float(args.min_alpha)
@@ -101,8 +102,6 @@ if min_alpha <= 0.0:
 
 # check max alpha
 max_alpha = float(args.max_alpha)
-if max_alpha <= 0.0:
-    raise RuntimeError('max_alpha (%2.2f) must be positive.' % max_alpha)
 if max_alpha < min_alpha:
     raise RuntimeError('max_alpha (%2.2f) must be no smaller than min alpha (%2.2f).' % (max_alpha, min_alpha))
 
@@ -112,14 +111,9 @@ if n_alphas <= 0:
     raise RuntimeError('n_alphas (%d) must be positive.' % n_alphas)
 
 # check tolerance P2I
-tol_P2I = float(args.tol_P2I)
-if tol_P2I < 1.0:
-    raise RuntimeError('tol_P2I (%2.2f) must be larger or equal to 1.0.' % tol_P2I)
-
-# check use precomputed basis
-tol_P2I = float(args.use_basis)
-if tol_P2I < 1.0:
-    raise RuntimeError('tol_P2I (%2.2f) must be larger or equal to 1.0.' % tol_P2I)
+tol = float(args.tol)
+if tol < 0.0:
+    raise RuntimeError('tol (%2.2f) must be positive.' % tol)
 
 # check if output folder exists. if not, create a new one
 out_dir = args.out_dir
@@ -131,6 +125,7 @@ df_pap_stacked = df_pap.stack().reset_index()
 df_pap_stacked.columns = ['drug_conc', 'strain','survival']
 min_survival = df_pap_stacked[df_pap_stacked['survival'] > 0.0]['survival'].min()
 dol = 10**np.floor(np.log10(min_survival))
+shifted_max_log10_pap = 2 - np.log10(dol)
 print('Min survival percentage = %2.2e. Detection of limit = %2.2e.' % (min_survival, dol))
 
 # convert to log scale and 0 will be replaced by the detection of limit
@@ -142,41 +137,50 @@ df_pap_t = df_pap.T
 if args.pretrained_nmf_model is None:
     print("Running original NMF ...")
     success = False
-    for alpha in [0]+[10**x for x in np.linspace(np.log10(min_alpha), np.log10(max_alpha), n_alphas)]:
-        model = NMF(n_components=2, init='nndsvdar', random_state=42, max_iter=100000, tol=1e-6, alpha_W=alpha, alpha_H=alpha)
+    alphas = [0.0] + [10**x for x in np.linspace(np.log10(min_alpha), np.log10(max_alpha), n_alphas)]
+    min_reconstruction_err = -1.0
+    best_alpha = 0.0
+    for alpha in alphas:
+        model = NMF(n_components=2, init='nndsvdar', random_state=42, max_iter=100000, tol=1e-6, alpha_H=alpha, alpha_W=alpha)
         df_pap_W = pd.DataFrame(model.fit_transform(df_pap_t.values), columns=['Factor1', 'Factor2'], index=df_pap_t.index)
         df_pap_W.index.name = 'strain'
         df_pap_H = pd.DataFrame(model.components_, columns=df_pap.index, index=['Basis1', 'Basis2'])
-
-        # P2I (peak to initial) ratio
-        P2I_basis_1 = np.max(df_pap_H.loc['Basis1'])/df_pap_H.loc['Basis1', 0]
-        P2I_basis_2 = np.max(df_pap_H.loc['Basis2'])/df_pap_H.loc['Basis2', 0]
         if model.n_iter_ == 100000:
             print('alpha = %2.2e, solution does not converge.' % alpha)
         else:
-            print('alpha = %2.2e, P2I_basis_1 = %2.2f, P2I_basis_2 = %2.2f, reconstruction_error = %2.2f.' % (alpha, P2I_basis_1, P2I_basis_2, model.reconstruction_err_))
-            if P2I_basis_1 <= tol_P2I and P2I_basis_2 <= tol_P2I:
-                success = True
-                # save model as an object
-                with open('%s/best_model.pickle', 'wb') as handle:
-                    pickle.dump(model, handle)
-                break
+            print('alpha = %2.2e, reconstruction_error = %2.2f.' % (alpha, model.reconstruction_err_))
+            if alpha == 0.0:
+                min_reconstruction_err = model.reconstruction_err_
+            else:
+                if model.reconstruction_err_ > min_reconstruction_err * (1+tol):
+                    # retrain the model using best alpha
+                    model = NMF(n_components=2, init='nndsvdar', random_state=42, max_iter=100000, tol=1e-6, alpha_H=best_alpha, alpha_W=best_alpha)
+                    df_pap_W = pd.DataFrame(model.fit_transform(df_pap_t.values), columns=['Factor1', 'Factor2'], index=df_pap_t.index)
+                    df_pap_W.index.name = 'strain'
+                    df_pap_H = pd.DataFrame(model.components_, columns=df_pap.index, index=['Basis1', 'Basis2'])
+
+                    # save model as an object
+                    success = True
+                    with open('%s/best_model.pickle' % out_dir, 'wb') as handle:
+                        pickle.dump(model, handle)
+                    break
+                else:
+                    best_alpha = alpha
     if success == False:
         print('NMF fails. Exit.')
         exit()
-
-    # normalize W and H matrices
-    shifted_max_log10_pap = 2 - np.log10(dol)
-    multiplier = [shifted_max_log10_pap / v for v in list(df_pap_H[0])]
-    df_pap_H.iloc[0, :] = df_pap_H.iloc[0, :] * multiplier[0]
-    df_pap_H.iloc[1, :] = df_pap_H.iloc[1, :] * multiplier[1]
-    df_pap_W.iloc[:, 0] = df_pap_W.iloc[:, 0] / multiplier[0]
-    df_pap_W.iloc[:, 1] = df_pap_W.iloc[:, 1] / multiplier[1]
 else:
     print("Running NMF with precomputed basis ...")
     df_pap_W = pd.DataFrame(model.transform(df_pap_t.values), columns=['Factor1', 'Factor2'], index=df_pap_t.index)
     df_pap_W.index.name = 'strain'
     df_pap_H = pd.DataFrame(model.components_, columns=df_pap.index, index=['Basis1', 'Basis2'])
+
+# normalize W and H matrices
+multiplier = [shifted_max_log10_pap / v for v in list(df_pap_H[0])]
+df_pap_H.iloc[0, :] = df_pap_H.iloc[0, :] * multiplier[0]
+df_pap_H.iloc[1, :] = df_pap_H.iloc[1, :] * multiplier[1]
+df_pap_W.iloc[:, 0] = df_pap_W.iloc[:, 0] / multiplier[0]
+df_pap_W.iloc[:, 1] = df_pap_W.iloc[:, 1] / multiplier[1]
 
 # determine which feature represents the S/HR state
 basis1_feature = 'S'
@@ -229,9 +233,10 @@ _ = ax01.plot(df_pap.index, df_pap_H.loc['Basis2', :], 'bo-', linewidth=2, marke
 _ = ax01.legend()
 _ = ax01.set_xlabel('Drug concentration', fontsize=12)
 _ = ax01.set_ylabel('$log_{10}(Survival ~\%)$', fontsize=12)
-_ = ax01.set_ylim([-0.5, shifted_max_log10_pap * tol_P2I + 0.5])
-_ = ax01.set_yticks(np.arange(0, shifted_max_log10_pap * tol_P2I + 1))
-_ = ax01.set_yticklabels([y + np.log10(dol) for y in np.arange(0, shifted_max_log10_pap * tol_P2I + 1)])
+max_yint = np.ceil(np.max(df_pap_H.max().max()))
+_ = ax01.set_ylim([-0.5, max_yint + 0.5])
+_ = ax01.set_yticks(np.arange(0, max_yint + 1))
+_ = ax01.set_yticklabels([y + np.log10(dol) for y in np.arange(0, max_yint + 1)])
 _ = ax01.set_xticks(list(df_pap.index))
 
 # plot correlation of weights (W matrix)

@@ -1,8 +1,8 @@
-pap_file,micafungin_PAPdata_final.csv
+pap_file,PAP_repeats_micafungin_cleaned.csv
 detection_limit,1e-6
 time_length,48
-mc_runs,100
-#to_include,33
+mc_runs,1000
+#to_include,485_1;485_3;485_4;485_5
 maxg_lb,0.1
 maxg_ub,1.0
 mic_lb,0.125
