@@ -1,0 +1,5 @@
+name	value	type	description
+location	/Users/liaoc/Documents/SHADOW/instrain/instrainComparer	value	Location of SNVprofile object
+version	1.6.3	value	Version of inStrain
+comparisonsTable	/Users/liaoc/Documents/SHADOW/instrain/instrainComparer/raw_data/comparisonsTable.csv.gz	pandas	Comparisons between the requested IS objects
+scaffold2length	/Users/liaoc/Documents/SHADOW/instrain/instrainComparer/raw_data/scaffold2length.json	dictionary	Scaffold to length

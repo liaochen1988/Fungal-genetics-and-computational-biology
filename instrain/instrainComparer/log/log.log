@@ -1,0 +1,103 @@
+22-10-08 19:32:18 DEBUG    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+22-10-08 19:32:18 DEBUG    ***Logger started up at /Users/liaoc/Documents/SHADOW/instrain/instrainComparer/log/log.log***
+22-10-08 19:32:18 DEBUG    Command to run inStrain was: /Users/liaoc/opt/anaconda3/bin/inStrain compare -i Sample_1206_IGO_11707_10/1206_IGO_11707_10_S78.IS/ Sample_1394_IGO_11707_19/1394_IGO_11707_19_S87.IS/ Sample_794_IGO_10182_9/794_IGO_10182_9_S75.IS/ -p 36
+
+22-10-08 19:32:18 DEBUG    inStrain version 1.6.3 was run 
+
+22-10-08 19:32:18 DEBUG    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+22-10-08 19:32:18 DEBUG    $$$$$$$$$$ DEPENDENCY REPORT $$$$$$$$$$
+PYTHON
+Running python v3.9.12 (main, Apr  5 2022, 01:53:17) 
+[Clang 12.0.0 ]
+
+PROGRAM DEPENDENCIES
+samtools...................... all good   (version=samtools 1.11) (location = /usr/local/bin/samtools)
+coverm........................ all good   (version=coverm 0.6.1) (location = /Users/liaoc/.cargo/bin/coverm)
+
+PYTHON DEPENDENCIES
+matplotlib.................... all good   (version=3.5.1) (location = /Users/liaoc/opt/anaconda3/lib/python3.9/site-packages/matplotlib/__init__.py)
+seaborn....................... all good   (version=0.11.2) (location = /Users/liaoc/opt/anaconda3/lib/python3.9/site-packages/seaborn/__init__.py)
+numpy......................... all good   (version=1.21.6) (location = /Users/liaoc/opt/anaconda3/lib/python3.9/site-packages/numpy/__init__.py)
+Bio........................... all good   (version=1.74) (location = /Users/liaoc/opt/anaconda3/lib/python3.9/site-packages/Bio/__init__.py)
+pysam......................... all good   (version=0.19.1) (location = /Users/liaoc/opt/anaconda3/lib/python3.9/site-packages/pysam/__init__.py)
+pandas........................ all good   (version=1.4.2) (location = /Users/liaoc/opt/anaconda3/lib/python3.9/site-packages/pandas/__init__.py)
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+22-10-08 19:32:18 INFO     ***************************************************
+    ..:: inStrain compare Step 1. Load data ::..
+***************************************************
+                
+22-10-08 19:32:18 DEBUG    Checkpoint Compare CreateScaffoldComparisonObjects start 212344832
+22-10-08 19:32:18 DEBUG    Loading Sample_1206_IGO_11707_10/1206_IGO_11707_10_S78.IS/
+22-10-08 19:32:18 DEBUG    Loading Sample_1394_IGO_11707_19/1394_IGO_11707_19_S87.IS/
+22-10-08 19:32:18 DEBUG    Loading Sample_794_IGO_10182_9/794_IGO_10182_9_S75.IS/
+22-10-08 19:32:18 INFO     9 of 9 scaffolds are in at least 2 samples
+22-10-08 19:32:18 DEBUG    Checkpoint Compare CreateScaffoldComparisonObjects end 222474240
+22-10-08 19:32:18 INFO     ***************************************************
+..:: inStrain compare Step 2. Run comparisons ::..
+***************************************************
+                
+22-10-08 19:32:18 DEBUG    Checkpoint Compare multiprocessing start 223420416
+22-10-08 19:32:18 INFO     Running group 1 of 2
+22-10-08 19:32:28 DEBUG    
+WorkerLog Compare mito_C_parapsilosis_CDC317 start 224219136 1665271948.814612 82222
+
+WorkerLog Compare mito_C_parapsilosis_CDC317 end 248651776 1665271948.908161 82222
+22-10-08 19:32:29 DEBUG    
+WorkerLog Compare Contig005806_C_parapsilosis_CDC317 start 308019200 1665271947.539364 82221
+
+WorkerLog Compare Contig005806_C_parapsilosis_CDC317 end 800223232 1665271949.048239 82221
+22-10-08 19:32:31 DEBUG    
+WorkerLog Compare Contig006372_C_parapsilosis_CDC317 start 362811392 1665271948.9345798 82220
+
+WorkerLog Compare Contig006372_C_parapsilosis_CDC317 end 1226821632 1665271951.394717 82220
+22-10-08 19:32:31 DEBUG    
+WorkerLog Compare Contig005807_C_parapsilosis_CDC317 start 384491520 1665271949.254328 82223
+
+WorkerLog Compare Contig005807_C_parapsilosis_CDC317 end 1282154496 1665271951.881928 82223
+22-10-08 19:32:32 DEBUG    
+WorkerLog Compare Contig005569_C_parapsilosis_CDC317 start 392708096 1665271949.546871 82224
+
+WorkerLog Compare Contig005569_C_parapsilosis_CDC317 end 1300238336 1665271952.287041 82224
+22-10-08 19:32:32 DEBUG    
+WorkerLog Compare Contig005809_C_parapsilosis_CDC317 start 454078464 1665271948.7825851 82219
+
+WorkerLog Compare Contig005809_C_parapsilosis_CDC317 end 2022506496 1665271952.9338539 82219
+22-10-08 19:32:33 INFO     Running group 2 of 2
+22-10-08 19:32:42 DEBUG    
+WorkerLog Compare Contig006139_C_parapsilosis_CDC317 start 305852416 1665271961.2536168 82258
+
+WorkerLog Compare Contig006139_C_parapsilosis_CDC317 end 880898048 1665271962.734645 82258
+22-10-08 19:32:42 DEBUG    
+WorkerLog Compare Contig006110_C_parapsilosis_CDC317 start 302071808 1665271961.499516 82259
+
+WorkerLog Compare Contig006110_C_parapsilosis_CDC317 end 820076544 1665271962.9009469 82259
+22-10-08 19:32:42 DEBUG    
+WorkerLog Compare Contig005504_C_parapsilosis_CDC317 start 299692032 1665271961.660653 82261
+
+WorkerLog Compare Contig005504_C_parapsilosis_CDC317 end 766382080 1665271962.918941 82261
+22-10-08 19:32:43 DEBUG    Checkpoint Compare multiprocessing end 1499193344
+22-10-08 19:32:43 INFO     ***************************************************
+..:: inStrain compare Step 3. Auxiliary processing ::..
+***************************************************
+                
+22-10-08 19:32:43 INFO     ***************************************************
+..:: inStrain compare Step 4. Store results ::..
+***************************************************
+                
+22-10-08 19:32:43 DEBUG    Checkpoint Compare SaveResults start 1499246592
+22-10-08 19:32:43 DEBUG    Checkpoint Compare SaveResults end 1499443200
+22-10-08 19:32:43 INFO     $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+..:: inStrain compare finished ::..
+
+Output tables........ /Users/liaoc/Documents/SHADOW/instrain/instrainComparer/output/
+Figures.............. /Users/liaoc/Documents/SHADOW/instrain/instrainComparer/figures/
+Logging.............. /Users/liaoc/Documents/SHADOW/instrain/instrainComparer/log/
+
+See documentation for output descriptions - https://instrain.readthedocs.io/en/latest/
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+        
+22-10-08 19:32:43 DEBUG    inStrain complete; shutting down logger and printing run stats if in debug mode (log location = /Users/liaoc/Documents/SHADOW/instrain/instrainComparer/log/log.log)
